@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <title>F1 Driver Life (H5 MVP)</title>
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --card:#121a29;
+      --card2:#0f1624;
+      --line:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.62);
+      --good:#7CFFB2;
+      --bad:#FF6B6B;
+      --accent:#7AA2FF;
+      --accent2:#B47CFF;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background: radial-gradient(1200px 600px at 20% 0%, rgba(122,162,255,.18), transparent 55%),
+                  radial-gradient(1200px 800px at 90% 20%, rgba(180,124,255,.16), transparent 60%),
+                  var(--bg);
+      color:var(--text);
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC",sans-serif;
+    }
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 16px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+      align-items:flex-start;
+      justify-content:center;
+    }
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+    }
+    .hud{
+      width: 360px;
+      min-width: 320px;
+      padding: 14px;
+    }
+    .boardCard{
+      width: 520px;
+      min-width: 320px;
+      padding: 14px;
+    }
+    .title{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+    }
+    .title h1{
+      font-size:18px;
+      margin:0;
+      letter-spacing:.3px;
+    }
+    .subtitle{
+      font-size:12px;
+      color:var(--muted);
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .stat{
+      flex:1 1 48%;
+      background: rgba(0,0,0,.18);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      min-width:150px;
+    }
+    .stat .k{
+      font-size:11px;
+      color:var(--muted);
+      letter-spacing:.6px;
+    }
+    .stat .v{
+      margin-top:4px;
+      font-size:18px;
+      font-weight:700;
+    }
+    .bar{
+      height:8px;
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      overflow:hidden;
+      margin-top:8px;
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .bar > div{
+      height:100%;
+      width:50%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .btns{
+      margin-top:12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    button{
+      appearance:none;
+      border:none;
+      border-radius:14px;
+      padding: 12px 14px;
+      font-size:14px;
+      font-weight:650;
+      color:var(--text);
+      background: linear-gradient(135deg, rgba(122,162,255,.9), rgba(180,124,255,.9));
+      box-shadow: 0 8px 22px rgba(122,162,255,.15);
+      cursor:pointer;
+      flex: 1 1 auto;
+      min-width: 140px;
+    }
+    button:active{ transform: translateY(1px); }
+    .ghost{
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow:none;
+      font-weight:600;
+      color: rgba(255,255,255,.85);
+    }
+    .log{
+      margin-top:12px;
+      background: rgba(0,0,0,.16);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      max-height: 260px;
+      overflow:auto;
+      font-size:12px;
+      color: rgba(255,255,255,.78);
+      line-height:1.5;
+    }
+    .log .t{ color: rgba(255,255,255,.92); font-weight:650;}
+    .log .good{ color: var(--good); font-weight:650;}
+    .log .bad{ color: var(--bad); font-weight:650;}
+    .log .muted{ color: var(--muted); }
+    .board{
+      display:grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap:8px;
+      margin-top:10px;
+    }
+    .cell{
+      aspect-ratio: 1/1;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.18);
+      position:relative;
+      overflow:hidden;
+      display:flex;
+      align-items:flex-end;
+      justify-content:flex-start;
+      padding:8px;
+    }
+    .cell .tag{
+      font-size:11px;
+      color: rgba(255,255,255,.76);
+      padding: 4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      backdrop-filter: blur(6px);
+    }
+    .cell .idx{
+      position:absolute;
+      top:8px;
+      left:8px;
+      font-size:11px;
+      color: rgba(255,255,255,.45);
+    }
+    .cell.training{ background: rgba(122,162,255,.10); }
+    .cell.pr{ background: rgba(180,124,255,.10); }
+    .cell.sponsor{ background: rgba(124,255,178,.08); }
+    .cell.rival{ background: rgba(255,175,85,.09); }
+    .cell.team{ background: rgba(255,255,255,.06); }
+    .cell.accident{ background: rgba(255,107,107,.10); }
+    .cell.race{ background: rgba(255,255,255,.08); }
+    .cell.start{ background: rgba(255,255,255,.10); }
+
+    .token{
+      position:absolute;
+      right:8px;
+      top:8px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.95), rgba(255,255,255,.2));
+      border:1px solid rgba(255,255,255,.35);
+      box-shadow: 0 10px 18px rgba(0,0,0,.35);
+    }
+
+    /* modal */
+    .modalBack{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 50;
+    }
+    .modal{
+      width: min(560px, 96vw);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:16px;
+      overflow:hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,.50);
+    }
+    .modalHeader{
+      padding: 14px 14px 10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .modalHeader .h{
+      font-size:16px;
+      font-weight:750;
+      margin:0;
+    }
+    .modalHeader .p{
+      margin:6px 0 0;
+      font-size:13px;
+      color: rgba(255,255,255,.72);
+      line-height:1.5;
+    }
+    .modalBody{ padding: 12px 14px 14px; }
+    .choices{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:10px;
+    }
+    .choice{
+      padding: 12px 12px;
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.14);
+      cursor:pointer;
+      user-select:none;
+    }
+    .choice:active{ transform: translateY(1px); }
+    .choice .ct{ font-weight:700; }
+    .choice .ce{
+      margin-top:6px;
+      font-size:12px;
+      color: rgba(255,255,255,.68);
+    }
+    .pill{
+      display:inline-block;
+      padding: 3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.16);
+      font-size:11px;
+      color: rgba(255,255,255,.72);
+      margin-right:6px;
+    }
+    .tiny{
+      font-size:11px;
+      color: rgba(255,255,255,.62);
+    }
+    .foot{
+      margin-top:10px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      padding: 2px 6px;
+      border-radius:6px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.14);
+      color: rgba(255,255,255,.78);
+      font-size:11px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="panel hud">
+      <div class="title">
+        <div>
+          <h1>F1 车手人生 · H5 MVP</h1>
+          <div class="subtitle">掷骰子走格子 → 触发事件 → 赛季推进（简化版）</div>
+        </div>
+        <div class="tiny"><span class="kbd">v0.1</span></div>
+      </div>
+
+      <div class="row" id="stats"></div>
+
+      <div class="btns">
+        <button id="rollBtn">🎲 掷骰子</button>
+        <button class="ghost" id="resetBtn">↺ 重开赛季</button>
+      </div>
+
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="panel boardCard">
+      <div class="title">
+        <div>
+          <h1>赛季棋盘</h1>
+          <div class="subtitle">每走一步触发：训练 / PR / 赞助 / 车队 / 对手 / 意外 / 比赛周</div>
+        </div>
+        <div class="tiny">当前位置：<span class="kbd" id="posText">0</span></div>
+      </div>
+
+      <div class="board" id="board"></div>
+
+      <div class="foot">
+        <div class="tiny">
+          小提示：先做成“可玩骨架”，再逐步加：转会窗、车队信任、研发进度、雨战、队友等。
+        </div>
+        <div class="tiny">下一站：第 <span id="weekText">1</span> 周 / 共 <span id="seasonLenText">12</span> 周</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modalBack" id="modalBack">
+    <div class="modal">
+      <div class="modalHeader">
+        <p class="h" id="mTitle">事件标题</p>
+        <p class="p" id="mDesc">事件描述</p>
+      </div>
+      <div class="modalBody">
+        <div id="mMeta" class="tiny"></div>
+        <div class="choices" id="mChoices"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== Utils ======
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const rint = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
+    const pick = (arr)=> arr[Math.floor(Math.random()*arr.length)];
+    const fmtDelta = (n)=> (n>0?`+${n}`:`${n}`);
+
+    // ====== Game State ======
+    const SEASON_LEN = 12;           // 一季 12 周（示例）
+    const BOARD_LEN  = 24;           // 24 格循环
+    let state;
+
+    const TILE_TYPES = [
+      "start","training","pr","sponsor","rival","team","accident","race"
+    ];
+
+    // 简易棋盘：每格一个类型（你后面可以换成JSON配置）
+    const boardTypes = Array.from({length: BOARD_LEN}, (_,i)=>{
+      if(i===0) return "start";
+      if(i%6===0) return "race";
+      if(i%7===0) return "accident";
+      if(i%5===0) return "team";
+      if(i%4===0) return "rival";
+      if(i%3===0) return "sponsor";
+      if(i%2===0) return "pr";
+      return "training";
+    });
+
+    const tileName = {
+      start:"Paddock",
+      training:"训练",
+      pr:"媒体",
+      sponsor:"赞助",
+      rival:"对手",
+      team:"车队",
+      accident:"意外",
+      race:"比赛周"
+    };
+
+    function freshState(){
+      return {
+        pos: 0,
+        week: 1,
+        finished: false,
+        stats: {
+          pace: 50,
+          racecraft: 45,
+          consistency: 50,
+          fitness: 50,
+          reputation: 35,
+          money: 20,
+          points: 0,
+          trust: 40,       // 车队信任（示例）
+        }
+      };
+    }
+
+    // ====== Event Pools ======
+    // 每个事件：title, desc, choices: [{t, e, apply(state)}]
+    const EVENTS = {
+      training: [
+        {
+          title:"模拟器加练",
+          desc:"工程师问你要不要把今晚留给模拟器。强度拉满，但会消耗精力与资源。",
+          choices:[
+            { t:"加练到深夜", e:"PACE +3，FITNESS -2，MONEY -2", apply:s=>{
+              s.stats.pace+=3; s.stats.fitness-=2; s.stats.money-=2;
+            }},
+            { t:"适度训练", e:"PACE +1，CONSISTENCY +1", apply:s=>{
+              s.stats.pace+=1; s.stats.consistency+=1;
+            }},
+            { t:"休息恢复", e:"FITNESS +3，CONSISTENCY +1", apply:s=>{
+              s.stats.fitness+=3; s.stats.consistency+=1;
+            }},
+          ]
+        },
+        {
+          title:"轮胎管理特训",
+          desc:"教练给你安排了轮胎管理与长距离节奏训练。",
+          choices:[
+            { t:"专注长距离", e:"RACECRAFT +3", apply:s=>{ s.stats.racecraft+=3; }},
+            { t:"强化稳定性", e:"CONSISTENCY +3", apply:s=>{ s.stats.consistency+=3; }},
+            { t:"两者都要", e:"RACECRAFT +1，CONSISTENCY +1，FITNESS -1", apply:s=>{
+              s.stats.racecraft+=1; s.stats.consistency+=1; s.stats.fitness-=1;
+            }},
+          ]
+        },
+      ],
+      pr: [
+        {
+          title:"媒体提问：你对队友怎么看？",
+          desc:"记者故意引导对立。你一句话能决定风向。",
+          choices:[
+            { t:"夸队友、夸团队", e:"REPUTATION +2，TRUST +2", apply:s=>{
+              s.stats.reputation+=2; s.stats.trust+=2;
+            }},
+            { t:"强调我更快", e:"REPUTATION +3，TRUST -2", apply:s=>{
+              s.stats.reputation+=3; s.stats.trust-=2;
+            }},
+            { t:"冷处理不接招", e:"CONSISTENCY +1，REPUTATION +0", apply:s=>{
+              s.stats.consistency+=1;
+            }},
+          ]
+        },
+        {
+          title:"PR活动插队",
+          desc:"赞助方要你临时出席活动，会挤占训练时间。",
+          choices:[
+            { t:"去，给足面子", e:"REPUTATION +3，MONEY +2，PACE -1", apply:s=>{
+              s.stats.reputation+=3; s.stats.money+=2; s.stats.pace-=1;
+            }},
+            { t:"只视频连线", e:"REPUTATION +1", apply:s=>{ s.stats.reputation+=1; }},
+            { t:"拒绝", e:"PACE +1，REPUTATION -2", apply:s=>{
+              s.stats.pace+=1; s.stats.reputation-=2;
+            }},
+          ]
+        },
+      ],
+      sponsor: [
+        {
+          title:"赞助合约：出席条款",
+          desc:"赞助商愿意加钱，但要求你每两周必须参加一次商业活动。",
+          choices:[
+            { t:"签：钱更重要", e:"MONEY +6，REPUTATION +1，(轻微训练惩罚以后再做)", apply:s=>{
+              s.stats.money+=6; s.stats.reputation+=1;
+            }},
+            { t:"谈条件", e:"MONEY +3，TRUST +1", apply:s=>{
+              s.stats.money+=3; s.stats.trust+=1;
+            }},
+            { t:"不签", e:"REPUTATION +0，MONEY +0", apply:s=>{}},
+          ]
+        },
+      ],
+      rival: [
+        {
+          title:"对手逼你出界",
+          desc:"练习赛对手强硬挤压，你可以硬刚，也可以让开保胎。",
+          choices:[
+            { t:"硬刚到底", e:"REPUTATION +2，CONSISTENCY -2", apply:s=>{
+              s.stats.reputation+=2; s.stats.consistency-=2;
+            }},
+            { t:"让开保胎", e:"RACECRAFT +2，REPUTATION -1", apply:s=>{
+              s.stats.racecraft+=2; s.stats.reputation-=1;
+            }},
+            { t:"无线电要求裁判", e:"REPUTATION +1，TRUST -1", apply:s=>{
+              s.stats.reputation+=1; s.stats.trust-=1;
+            }},
+          ]
+        },
+      ],
+      team: [
+        {
+          title:"升级优先级会议",
+          desc:"车队只够做一项升级，你想要更快的车还是更稳的车？",
+          choices:[
+            { t:"追求速度", e:"PACE +2，TRUST +1", apply:s=>{
+              s.stats.pace+=2; s.stats.trust+=1;
+            }},
+            { t:"追求稳定", e:"CONSISTENCY +2，TRUST +1", apply:s=>{
+              s.stats.consistency+=2; s.stats.trust+=1;
+            }},
+            { t:"要两套升级", e:"TRUST -2（被认为不现实）", apply:s=>{
+              s.stats.trust-=2;
+            }},
+          ]
+        },
+      ],
+      accident: [
+        {
+          title:"刹车问题",
+          desc:"工程师发现刹车温度异常。你可以冒险继续，也可以换部件罚位。",
+          choices:[
+            { t:"继续跑", e:"PACE +1（熟悉极限），CONSISTENCY -3", apply:s=>{
+              s.stats.pace+=1; s.stats.consistency-=3;
+            }},
+            { t:"换部件保完赛", e:"CONSISTENCY +1，REPUTATION +1，MONEY -2", apply:s=>{
+              s.stats.consistency+=1; s.stats.reputation+=1; s.stats.money-=2;
+            }},
+            { t:"上报并让车队决策", e:"TRUST +2", apply:s=>{
+              s.stats.trust+=2;
+            }},
+          ]
+        },
+      ],
+      race: [
+        {
+          title:"比赛周：排位与正赛结算",
+          desc:"简化结算：根据属性计算排位与正赛表现，给积分与声望。",
+          choices:[
+            { t:"开始比赛结算", e:"进行一次结算", apply:s=>{
+              runRace(s);
+            }},
+          ]
+        },
+      ],
+      start: [
+        {
+          title:"新赛季开始",
+          desc:"欢迎来到围场。你的目标：在 12 周内尽量拿到更多积分，并提高声望与车队信任。",
+          choices:[
+            { t:"出发", e:"开始赛季", apply:s=>{} }
+          ]
+        }
+      ]
+    };
+
+    // ====== Race Resolution (简化) ======
+    function runRace(s){
+      // 基础表现分：速度+正赛+稳定+体能/信任一些微调
+      const st = s.stats;
+      const perfQual = st.pace*0.55 + st.consistency*0.25 + st.fitness*0.20 + rint(-6,6);
+      const perfRace = st.pace*0.35 + st.racecraft*0.35 + st.consistency*0.20 + st.fitness*0.10 + rint(-8,8) + (st.trust-40)*0.08;
+
+      // 排位名次估算（越高越好）
+      const q = scoreToPos(perfQual);
+      const r = scoreToPos(perfRace);
+
+      let pts = pointsForPos(r);
+      st.points += pts;
+
+      // 声望：排位好/正赛好都有加成，DNF概率受稳定影响
+      const dnfRoll = Math.random();
+      const dnfChance = clamp(0.18 - (st.consistency-50)*0.003, 0.05, 0.22);
+      let dnf = dnfRoll < dnfChance;
+
+      if(dnf){
+        // DNF：积分清零，声望略降，稳定可能下降
+        pts = 0;
+        st.reputation -= 2;
+        st.consistency -= 2;
+        logLine(`🏁 比赛结果：排位 P${q}，正赛 DNF。 <span class="bad">声望 -2</span>`, true);
+      }else{
+        st.reputation += (r<=10?2:1) + (q<=5?1:0);
+        st.money += (r<=10?2:0);
+        st.trust += (r<=8?1:0);
+        logLine(`🏁 比赛结果：排位 P${q}，正赛 P${r}，积分 <span class="good">+${pts}</span>`, true);
+      }
+
+      // 赛季推进
+      s.week += 1;
+      if(s.week > SEASON_LEN){
+        s.finished = true;
+        endSeason();
+      } else {
+        updateHUD();
+      }
+    }
+
+    function scoreToPos(score){
+      // 粗暴映射：分数区间对应名次
+      // 目标：50左右在P12~P15，70+能进前10
+      const s = clamp(score, 0, 100);
+      if(s>=85) return rint(1,3);
+      if(s>=78) return rint(3,6);
+      if(s>=70) return rint(6,10);
+      if(s>=62) return rint(10,14);
+      if(s>=55) return rint(14,17);
+      if(s>=48) return rint(17,20);
+      return rint(20,20);
+    }
+    function pointsForPos(pos){
+      const table = {1:25,2:18,3:15,4:12,5:10,6:8,7:6,8:4,9:2,10:1};
+      return table[pos] || 0;
+    }
+
+    // ====== UI Render ======
+    const elBoard = document.getElementById("board");
+    const elStats = document.getElementById("stats");
+    const elLog = document.getElementById("log");
+    const elPosText = document.getElementById("posText");
+    const elWeekText = document.getElementById("weekText");
+    const elSeasonLenText = document.getElementById("seasonLenText");
+
+    const modalBack = document.getElementById("modalBack");
+    const mTitle = document.getElementById("mTitle");
+    const mDesc  = document.getElementById("mDesc");
+    const mChoices = document.getElementById("mChoices");
+    const mMeta = document.getElementById("mMeta");
+
+    const rollBtn = document.getElementById("rollBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    function renderBoard(){
+      elBoard.innerHTML = "";
+      for(let i=0;i<BOARD_LEN;i++){
+        const type = boardTypes[i];
+        const cell = document.createElement("div");
+        cell.className = `cell ${type}`;
+        cell.innerHTML = `
+          <div class="idx">#${i}</div>
+          <div class="tag">${tileName[type]}</div>
+          ${i===state.pos?`<div class="token" title="你"></div>`:""}
+        `;
+        elBoard.appendChild(cell);
+      }
+    }
+
+    function renderStats(){
+      const st = state.stats;
+      const items = [
+        ["PACE", st.pace, 0, 100],
+        ["RACE", st.racecraft, 0, 100],
+        ["STABLE", st.consistency, 0, 100],
+        ["FIT", st.fitness, 0, 100],
+        ["REP", st.reputation, 0, 100],
+        ["TRUST", st.trust, 0, 100],
+        ["MONEY", st.money, -20, 80],
+        ["PTS", st.points, 0, 200],
+      ];
+      elStats.innerHTML = items.map(([k,v,lo,hi])=>{
+        const pct = clamp((v-lo)/(hi-lo)*100, 0, 100);
+        return `
+          <div class="stat">
+            <div class="k">${k}</div>
+            <div class="v">${Math.round(v)}</div>
+            <div class="bar"><div style="width:${pct}%"></div></div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function logLine(text, keep=false){
+      const d = document.createElement("div");
+      d.innerHTML = text;
+      if(!keep){
+        // 控制日志量
+        if(elLog.childNodes.length > 60){
+          elLog.removeChild(elLog.firstChild);
+        }
+      }
+      elLog.appendChild(d);
+      elLog.scrollTop = elLog.scrollHeight;
+    }
+
+    function updateHUD(){
+      // clamp stats
+      const st = state.stats;
+      for(const k of ["pace","racecraft","consistency","fitness","reputation","trust"]){
+        st[k] = clamp(st[k], 0, 100);
+      }
+      st.money = clamp(st.money, -20, 200);
+      st.points = clamp(st.points, 0, 999);
+
+      elPosText.textContent = state.pos;
+      elWeekText.textContent = state.week;
+      elSeasonLenText.textContent = SEASON_LEN;
+
+      renderStats();
+      renderBoard();
+
+      rollBtn.disabled = state.finished;
+      rollBtn.textContent = state.finished ? "🏁 赛季已结束" : "🎲 掷骰子";
+    }
+
+    // ====== Modal ======
+    let pendingEvent = null;
+
+    function openEvent(type){
+      const pool = EVENTS[type] || EVENTS.training;
+      const ev = pick(pool);
+      pendingEvent = {type, ev};
+
+      mTitle.textContent = ev.title;
+      mDesc.textContent = ev.desc;
+      mMeta.innerHTML = `
+        <span class="pill">格子：${tileName[type]}</span>
+        <span class="pill">第 ${state.week} 周</span>
+        <span class="pill">位置 #${state.pos}</span>
+        <div class="tiny" style="margin-top:8px;color:rgba(255,255,255,.60);">
+          选择会立即生效。比赛周会推进周数（赛季进度）。
+        </div>
+      `;
+
+      mChoices.innerHTML = "";
+      ev.choices.forEach((c, idx)=>{
+        const div = document.createElement("div");
+        div.className = "choice";
+        div.innerHTML = `
+          <div class="ct">${idx+1}. ${c.t}</div>
+          <div class="ce">${c.e}</div>
+        `;
+        div.addEventListener("click", ()=>{
+          applyChoice(c);
+        });
+        mChoices.appendChild(div);
+      });
+
+      modalBack.style.display = "flex";
+    }
+
+    function closeEvent(){
+      modalBack.style.display = "none";
+      pendingEvent = null;
+    }
+
+    function applyChoice(choice){
+      // 执行
+      choice.apply(state);
+
+      // 日志：简单解析一下 e 文案
+      const tag = tileName[pendingEvent.type];
+      logLine(`<span class="t">[${tag}]</span> ${pendingEvent.ev.title} → 你选择了「${choice.t}」<div class="muted">${choice.e}</div>`);
+      closeEvent();
+      updateHUD();
+
+      // 非比赛格也推进“周”吗？这里先不推进，只在比赛周推进
+      // 你后面想做“每次行动+1周”，就把这里 state.week++ 放开。
+    }
+
+    // ====== Actions ======
+    function rollDice(){
+      if(state.finished) return;
+
+      const dice = rint(1,6);
+      const from = state.pos;
+      state.pos = (state.pos + dice) % BOARD_LEN;
+
+      logLine(`🎲 掷骰子：<span class="good">+${dice}</span>（从 #${from} → #${state.pos}）`);
+      updateHUD();
+
+      const type = boardTypes[state.pos];
+      openEvent(type);
+    }
+
+    function endSeason(){
+      updateHUD();
+      const st = state.stats;
+      const tier =
+        st.points >= 80 ? "争冠级（顶级席位稳了）" :
+        st.points >= 40 ? "强势中上游（转会窗有戏）" :
+        st.points >= 15 ? "中游起伏（需要更稳定）" :
+        "危险边缘（可能被换）";
+
+      // 用弹窗展示赛季总结
+      pendingEvent = {type:"race", ev:{title:"赛季结束：总结", desc:"", choices:[]}};
+      mTitle.textContent = "🏆 赛季结束：总结";
+      mDesc.textContent = `12 周结束。你的赛季走向已定。`;
+      mMeta.innerHTML = `
+        <div style="line-height:1.7">
+          <span class="pill">总积分：${st.points}</span>
+          <span class="pill">声望：${Math.round(st.reputation)}</span>
+          <span class="pill">车队信任：${Math.round(st.trust)}</span>
+          <div style="margin-top:10px" class="tiny">
+            评级：<span class="kbd">${tier}</span>
+          </div>
+          <div class="tiny" style="margin-top:10px;color:rgba(255,255,255,.70)">
+            下一步你可以加：转会报价、合同谈判、队友关系、研发树、雨战事件池等。
+          </div>
+        </div>
+      `;
+      mChoices.innerHTML = "";
+      const div = document.createElement("div");
+      div.className = "choice";
+      div.innerHTML = `<div class="ct">重开赛季</div><div class="ce">保留当前版本，重新开始一局</div>`;
+      div.addEventListener("click", ()=>{ resetGame(); closeEvent(); });
+      mChoices.appendChild(div);
+
+      modalBack.style.display = "flex";
+    }
+
+    function resetGame(){
+      state = freshState();
+      elLog.innerHTML = "";
+      logLine(`<span class="t">系统</span> 赛季已重置。`);
+      updateHUD();
+      // 开场事件
+      openEvent("start");
+    }
+
+    // ====== Init ======
+    rollBtn.addEventListener("click", rollDice);
+    resetBtn.addEventListener("click", resetGame);
+    modalBack.addEventListener("click", (e)=>{
+      if(e.target === modalBack) closeEvent();
+    });
+
+    state = freshState();
+    updateHUD();
+    logLine(`<span class="t">系统</span> 打开成功。点击「掷骰子」开始走格子。`);
+    openEvent("start");
+  </script>
+</body>
+</html>
